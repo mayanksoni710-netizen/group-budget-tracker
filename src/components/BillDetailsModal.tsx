@@ -1,25 +1,69 @@
-import { X, Save, User } from 'lucide-react';
-import { useState } from 'react';
+import { X, Save, User, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { WebhookResponse } from './FileUpload';
+import { supabase } from '../lib/supabase';
+
+interface AppUser {
+  id: string;
+  name: string;
+}
 
 interface BillDetailsModalProps {
   isOpen: boolean;
   data: WebhookResponse | null;
   onClose: () => void;
-  onSave: (data: WebhookResponse, userAssignments: Record<number, string>) => Promise<void>;
+  onSave: (data: WebhookResponse, userAssignments: Record<number, string[]>) => Promise<void>;
 }
 
 export function BillDetailsModal({ isOpen, data, onClose, onSave }: BillDetailsModalProps) {
-  const [userAssignments, setUserAssignments] = useState<Record<number, string>>({});
+  const [userAssignments, setUserAssignments] = useState<Record<number, string[]>>({});
+  const [users, setUsers] = useState<AppUser[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchUsers();
+    }
+  }, [isOpen]);
+
+  const fetchUsers = async () => {
+    try {
+      const { data: usersData, error } = await supabase
+        .from('users')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      setUsers(usersData || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
   if (!isOpen || !data) return null;
 
-  const handleUserAssignment = (index: number, userName: string) => {
-    setUserAssignments((prev) => ({
-      ...prev,
-      [index]: userName,
-    }));
+  const handleUserAssignment = (index: number, userId: string) => {
+    setUserAssignments((prev) => {
+      const currentUsers = prev[index] || [];
+      if (currentUsers.includes(userId)) {
+        return {
+          ...prev,
+          [index]: currentUsers.filter(id => id !== userId),
+        };
+      } else {
+        return {
+          ...prev,
+          [index]: [...currentUsers, userId],
+        };
+      }
+    });
+  };
+
+  const getAssignedUserNames = (index: number): string => {
+    const assignedIds = userAssignments[index] || [];
+    return assignedIds
+      .map(id => users.find(u => u.id === id)?.name)
+      .filter(Boolean)
+      .join(', ') || 'None';
   };
 
   const handleSave = async () => {
@@ -85,15 +129,33 @@ export function BillDetailsModal({ isOpen, data, onClose, onSave }: BillDetailsM
                       {data.currency} {item.total.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 border-b">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 group relative">
                         <User className="w-4 h-4 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Optional"
-                          value={userAssignments[index] || ''}
-                          onChange={(e) => handleUserAssignment(index, e.target.value)}
-                          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:bg-gray-50 text-left truncate"
+                        >
+                          {getAssignedUserNames(index)}
+                        </button>
+                        <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
+                          <div className="p-2 max-h-60 overflow-y-auto">
+                            {users.length === 0 ? (
+                              <p className="text-sm text-gray-500 p-2">No users added yet</p>
+                            ) : (
+                              users.map((user) => (
+                                <label key={user.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={(userAssignments[index] || []).includes(user.id)}
+                                    onChange={() => handleUserAssignment(index, user.id)}
+                                    className="w-4 h-4"
+                                  />
+                                  <span className="text-sm text-gray-700">{user.name}</span>
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -113,8 +175,7 @@ export function BillDetailsModal({ isOpen, data, onClose, onSave }: BillDetailsM
 
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600">
-              <strong>Tip:</strong> Use the "Assign To" field to split expenses between users. This
-              is optional and can be left blank.
+              <strong>Tip:</strong> Hover over the "Assign To" field to select one or more users for each item. You can split items between multiple people. Go to the Users section to add new users first.
             </p>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Receipt, TrendingDown, Users, Shield } from 'lucide-react';
 import { FileUpload, WebhookResponse } from './components/FileUpload';
 import { BillDetailsModal } from './components/BillDetailsModal';
 import { Toast } from './components/Toast';
+import { UserManagement } from './components/UserManagement';
 import { saveBillToDatabase } from './services/billService';
 
 interface ToastState {
@@ -25,7 +26,7 @@ function App() {
     setToast({ show: true, message: error, type: 'error' });
   };
 
-  const handleSave = async (data: WebhookResponse, userAssignments: Record<number, string>) => {
+  const handleSave = async (data: WebhookResponse, userAssignments: Record<number, string[]>) => {
     try {
       await saveBillToDatabase(data, userAssignments);
       setToast({
@@ -64,18 +65,22 @@ function App() {
       </nav>
 
       <main>
-        <section className="max-w-7xl mx-auto px-6 py-20">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-              Smart Expense Management
-              <br />
-              <span className="text-blue-600">Made Simple</span>
-            </h2>
-            <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-              Upload your bill images and let AI extract every detail. Track expenses, split bills
-              with friends, and stay on budget effortlessly.
-            </p>
-            <FileUpload onUploadSuccess={handleUploadSuccess} onUploadError={handleUploadError} />
+        <section className="max-w-7xl mx-auto px-6 py-16 space-y-20">
+          <UserManagement />
+
+          <div className="border-t border-gray-200 pt-20">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                Smart Expense Management
+                <br />
+                <span className="text-blue-600">Made Simple</span>
+              </h2>
+              <p className="text-xl text-gray-600 mb-10 leading-relaxed">
+                Upload your bill images and let AI extract every detail. Track expenses, split bills
+                with friends, and stay on budget effortlessly.
+              </p>
+              <FileUpload onUploadSuccess={handleUploadSuccess} onUploadError={handleUploadError} />
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mt-20">
